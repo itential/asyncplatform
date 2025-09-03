@@ -1,0 +1,90 @@
+# .github/workflows/codeql.yaml
+# This workflow performs CodeQL security scanning to identify potential
+# security vulnerabilities and coding errors in the codebase.
+# https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors
+---
+name: CodeQL Security Scanning
+
+on:
+  push:
+    branches:
+      - devel
+      - main
+  pull_request:
+    branches:
+      - devel
+  schedule:
+    # Run at 6:00 UTC every Monday
+    - cron: '0 6 * * 1'
+
+# Cancel in-progress runs for the same workflow + branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze Python code
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      # Required for all workflows
+      security-events: write
+      # Required for workflows in private repos
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --group dev
+
+      # Initializes the CodeQL tools for scanning
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Specify additional queries to run
+          queries: +security-and-quality
+          # Override the default CodeQL query suites
+          config: |
+            paths-ignore:
+              - tests
+              - examples
+
+      # Autobuild attempts to build any compiled languages (C/C++, C#, Go, Java, or Swift)
+      # For Python, this step is not strictly necessary but included for completeness
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      # Perform CodeQL Analysis
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+          # Upload results even if there are errors
+          upload: true
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: ../results
+          category: "/language:${{ matrix.language }}"

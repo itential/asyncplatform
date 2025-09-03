@@ -1,0 +1,68 @@
+# .github/workflows/test.yaml
+# This workflow runs on all branches to provide early feedback during development.
+# It runs a lightweight test suite on the latest Python version for quick validation.
+---
+name: Run tests
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+
+# Cancel in-progress runs for the same workflow + branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up uv cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-3.12-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-3.12-
+            uv-${{ runner.os }}-
+
+      - name: Install the project
+        run: uv sync --all-extras --group dev
+
+      - name: Run linting
+        run: uv run ruff check src/asyncplatform tests
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --tb=short
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ All tests passed!"
+          else
+            echo "❌ Tests failed. Please check the logs above."
+          fi
