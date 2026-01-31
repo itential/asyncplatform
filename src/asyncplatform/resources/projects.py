@@ -165,8 +165,8 @@ class Resource(ResourceBase):
     async def importer(
         self,
         project: dict[str, Any],
-        members: list[ProjectMember] | None = None,
         *,
+        members: list[ProjectMember] | None = None,
         preserve_existing_members: bool = True,
     ) -> dict[str, Any]:
         """Import a project into the platform with optional member assignments.
