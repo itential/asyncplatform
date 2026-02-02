@@ -13,12 +13,10 @@ from asyncplatform.services import ServiceBase
 
 
 class Service(ServiceBase):
-
     name: str = "help"
 
     @logging.trace
     async def get_openapi(self, url=None) -> dict[str, Any]:
-        """
-        """
+        """ """
         res = await self.get("/help/openapi", params={"url": (url or "/")})
         return res.json()

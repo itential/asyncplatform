@@ -79,7 +79,10 @@ class Service(ServiceBase):
             return results
 
         tasks = [
-            self.get(path, params={"limit": min(limit, total - skip), "skip": skip, **filters})
+            self.get(
+                path,
+                params={"limit": min(limit, total - skip), "skip": skip, **filters},
+            )
             for skip in range(limit, total, limit)
         ]
 
@@ -128,7 +131,9 @@ class Service(ServiceBase):
         Raises:
             AsyncPlatformError: If any API request fails during retrieval
         """
-        return await self._fetch_all_paginated("/lifecycle-manager/action-executions", **filters)
+        return await self._fetch_all_paginated(
+            "/lifecycle-manager/action-executions", **filters
+        )
 
     @logging.trace
     async def get_action_execution(self, execution_id: str) -> dict[str, Any]:
@@ -185,7 +190,9 @@ class Service(ServiceBase):
         Raises:
             AsyncPlatformError: If any API request fails during retrieval
         """
-        return await self._fetch_all_paginated("/lifecycle-manager/resources", **filters)
+        return await self._fetch_all_paginated(
+            "/lifecycle-manager/resources", **filters
+        )
 
     @logging.trace
     async def create_resource(self, resource_data: dict[str, Any]) -> dict[str, Any]:
