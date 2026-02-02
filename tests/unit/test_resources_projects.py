@@ -722,6 +722,149 @@ class TestImporter:
         # patch_project should not be called since members=None
         mock_studio.patch_project.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_importer_with_overwrite_true_deletes_existing(self):
+        """Test that overwrite=True deletes existing project before importing.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+        mock_client = MagicMock()
+        mock_studio = MagicMock()
+
+        # Mock finding existing project
+        mock_studio.find_projects = AsyncMock(
+            return_value=[{"_id": "existing_proj", "name": "Test Project"}]
+        )
+        # Mock deleting existing project
+        mock_studio.delete_project = AsyncMock(return_value={"message": "Deleted"})
+        # Mock importing new project
+        mock_studio.import_project = AsyncMock(
+            return_value={"_id": "new_proj", "name": "Test Project"}
+        )
+
+        mock_client.automation_studio = mock_studio
+
+        resource = Resource(mock_client)
+        project = {"name": "Test Project", "description": "Updated project"}
+
+        result = await resource.importer(project, overwrite=True)
+
+        # Verify existing project was found
+        mock_studio.find_projects.assert_called_once_with(name="Test Project")
+        # Verify existing project was deleted
+        mock_studio.delete_project.assert_called_once_with("existing_proj")
+        # Verify new project was imported
+        mock_studio.import_project.assert_called_once()
+        assert result["_id"] == "new_proj"
+        assert result["name"] == "Test Project"
+
+    @pytest.mark.asyncio
+    async def test_importer_with_overwrite_true_no_existing_project(self):
+        """Test that overwrite=True works when no existing project exists.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+        mock_client = MagicMock()
+        mock_studio = MagicMock()
+
+        # No existing project found
+        mock_studio.find_projects = AsyncMock(return_value=[])
+        mock_studio.delete_project = AsyncMock()
+        mock_studio.import_project = AsyncMock(
+            return_value={"_id": "proj1", "name": "Test Project"}
+        )
+
+        mock_client.automation_studio = mock_studio
+
+        resource = Resource(mock_client)
+        project = {"name": "Test Project", "description": "New project"}
+
+        result = await resource.importer(project, overwrite=True)
+
+        # Verify search was performed
+        mock_studio.find_projects.assert_called_once_with(name="Test Project")
+        # Verify no deletion occurred since project didn't exist
+        mock_studio.delete_project.assert_not_called()
+        # Verify project was imported
+        mock_studio.import_project.assert_called_once()
+        assert result["_id"] == "proj1"
+
+    @pytest.mark.asyncio
+    async def test_importer_with_overwrite_false_raises_on_existing(self):
+        """Test that overwrite=False raises error when project exists.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+        mock_client = MagicMock()
+        mock_studio = MagicMock()
+
+        mock_studio.find_projects = AsyncMock(
+            return_value=[{"_id": "existing", "name": "Test Project"}]
+        )
+        mock_client.automation_studio = mock_studio
+
+        resource = Resource(mock_client)
+        project = {"name": "Test Project", "description": "Test"}
+
+        # Test with explicit overwrite=False
+        with pytest.raises(exceptions.AsyncPlatformError) as exc_info:
+            await resource.importer(project, overwrite=False)
+
+        assert "Project `Test Project` already exists" in str(exc_info.value)
+        # Verify delete was never called
+        mock_studio.delete_project.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_importer_overwrite_default_false(self):
+        """Test that overwrite parameter defaults to False.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+        mock_client = MagicMock()
+        mock_studio = MagicMock()
+
+        mock_studio.find_projects = AsyncMock(
+            return_value=[{"_id": "existing", "name": "Test Project"}]
+        )
+        mock_client.automation_studio = mock_studio
+
+        resource = Resource(mock_client)
+        project = {"name": "Test Project", "description": "Test"}
+
+        # Test without specifying overwrite (should default to False)
+        with pytest.raises(exceptions.AsyncPlatformError) as exc_info:
+            await resource.importer(project)
+
+        assert "Project `Test Project` already exists" in str(exc_info.value)
+
 
 class TestDelete:
     """Test suite for delete method."""
