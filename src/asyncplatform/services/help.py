@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 from typing import Any
 
 from asyncplatform import logging
@@ -13,12 +11,10 @@ from asyncplatform.services import ServiceBase
 
 
 class Service(ServiceBase):
-
     name: str = "help"
 
     @logging.trace
-    async def get_openapi(self, url=None) -> dict[str, Any]:
-        """
-        """
+    async def get_openapi(self, url: str | None = None) -> dict[str, Any]:
+        """ """
         res = await self.get("/help/openapi", params={"url": (url or "/")})
         return res.json()

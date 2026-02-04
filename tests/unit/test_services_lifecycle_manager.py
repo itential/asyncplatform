@@ -149,7 +149,10 @@ class TestLifecycleManagerFetchAllPaginated:
     async def test_fetch_all_paginated_passes_filters(self, mock_get):
         """Test _fetch_all_paginated passes filter parameters correctly."""
         mock_response = Mock()
-        mock_response.json.return_value = {"metadata": {"total": 1}, "data": [{"id": "1"}]}
+        mock_response.json.return_value = {
+            "metadata": {"total": 1},
+            "data": [{"id": "1"}],
+        }
         mock_get.return_value = mock_response
 
         ctx = context.Context()
@@ -367,7 +370,9 @@ class TestLifecycleManagerEditResource:
         ctx.client = mock_client
 
         service = Service(ctx)
-        edits = {"operations": [{"op": "replace", "path": "/name", "value": "EditedDevice"}]}
+        edits = {
+            "operations": [{"op": "replace", "path": "/name", "value": "EditedDevice"}]
+        }
 
         result = await service.edit_resource("resource123", edits)
 

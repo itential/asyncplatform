@@ -168,12 +168,13 @@ class Resource(ResourceBase):
         *,
         members: list[ProjectMember] | None = None,
         preserve_existing_members: bool = True,
+        overwrite: bool = False,
     ) -> dict[str, Any]:
         """Import a project into the platform with optional member assignments.
 
         Imports a project and optionally assigns specified groups or user accounts
-        as project members. Validates that the project doesn't already exist and
-        that all specified members exist in the platform before importing.
+        as project members. By default, validates that the project doesn't already
+        exist. Can optionally overwrite an existing project.
 
         Args:
             project: Complete project definition including name, description,
@@ -185,21 +186,30 @@ class Resource(ResourceBase):
                 that were included in the imported project definition. If False,
                 removes all members from the imported project before adding the
                 specified members list
+            overwrite: If True, overwrites the project if it already exists in
+                the target environment. If False (default), raises an error if
+                the project already exists
 
         Returns:
             The imported project data including _id, name, and complete
             configuration from the initial import response
 
         Raises:
-            AsyncPlatformError: If a project with the same name already exists,
-                or if any specified member (group or account) does not exist,
-                or if a member has an invalid type
+            AsyncPlatformError: If overwrite is False and a project with the
+                same name already exists, or if any specified member (group or
+                account) does not exist, or if a member has an invalid type
             HTTPError: If the import or patch operations fail
         """
         project = copy.deepcopy(project)
 
-        # Ensure project is new
-        await self._ensure_project_is_new(project["name"])
+        # Check if project exists and handle based on overwrite flag
+        if not overwrite:
+            await self._ensure_project_is_new(project["name"])
+        else:
+            # Delete existing project if overwrite is True
+            existing_projects = await self.studio.find_projects(name=project["name"])
+            if existing_projects:
+                await self.studio.delete_project(existing_projects[0]["_id"])
 
         # Import the project
         result = await self.studio.import_project(project)
