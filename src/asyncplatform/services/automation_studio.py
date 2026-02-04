@@ -154,7 +154,12 @@ class Service(ServiceBase):
         return json_data["data"]
 
     @logging.trace
-    async def import_project(self, project: Mapping[str, Any]) -> Mapping[str, Any]:
+    async def import_project(
+        self,
+        project: Mapping[str, Any],
+        *,
+        skip_reference_validation: bool = False,
+    ) -> Mapping[str, Any]:
         """Import a project into Automation Studio.
 
         Imports a project configuration into the Itential Platform. The import
@@ -164,6 +169,8 @@ class Service(ServiceBase):
         Args:
             project: A mapping containing the complete project definition including
                 name, description, workflows, and other project components
+            skip_reference_validation: If True, skips validation of references during
+                import. Defaults to False.
 
         Returns:
             A mapping containing the imported project data, including the newly
@@ -178,6 +185,7 @@ class Service(ServiceBase):
                 "project": project,
                 "assignNewReferences": False,
                 "conflictMode": "insert-new",
+                "skipReferenceValidation": skip_reference_validation,
             },
             expected_status=HTTPStatus.OK,
         )

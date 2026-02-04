@@ -169,6 +169,7 @@ class Resource(ResourceBase):
         members: list[ProjectMember] | None = None,
         preserve_existing_members: bool = True,
         overwrite: bool = False,
+        skip_reference_validation: bool = False,
     ) -> dict[str, Any]:
         """Import a project into the platform with optional member assignments.
 
@@ -189,6 +190,8 @@ class Resource(ResourceBase):
             overwrite: If True, overwrites the project if it already exists in
                 the target environment. If False (default), raises an error if
                 the project already exists
+            skip_reference_validation: If True, skips validation of references
+                during import. Defaults to False.
 
         Returns:
             The imported project data including _id, name, and complete
@@ -212,7 +215,9 @@ class Resource(ResourceBase):
                 await self.studio.delete_project(existing_projects[0]["_id"])
 
         # Import the project
-        result = await self.studio.import_project(project)
+        result = await self.studio.import_project(
+            project, skip_reference_validation=skip_reference_validation
+        )
 
         # Add members if specified
         if members:
