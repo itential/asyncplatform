@@ -292,7 +292,9 @@ class TestImporter:
 
         assert result == {"_id": "proj1", "name": "Test Project"}
         mock_studio.find_projects.assert_called_once_with(name="Test Project")
-        mock_studio.import_project.assert_called_once_with(project)
+        mock_studio.import_project.assert_called_once_with(
+            project, skip_reference_validation=False
+        )
 
     @pytest.mark.asyncio
     async def test_importer_project_already_exists(self):
