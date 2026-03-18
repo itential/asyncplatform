@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Technology Stack
 
-- **Language**: Python 3.10+ (supports 3.10, 3.11, 3.12)
+- **Language**: Python 3.10+ (supports 3.10, 3.11, 3.12, 3.13)
 - **Build System**: Hatchling with uv-dynamic-versioning
 - **Dependency Management**: uv (see uv.lock)
 - **Core Dependencies**: ipsdk
@@ -52,6 +52,17 @@ uv run python -m build
 uv sync --group dev
 ```
 
+### Make Shortcuts
+```bash
+make test        # Run test suite (verbose)
+make coverage    # Run tests with HTML coverage report
+make lint        # Lint src/ and tests/
+make security    # Run bandit security analysis
+make premerge    # Run full premerge checks locally
+make tox         # Test across Python 3.10–3.13
+make clean       # Remove build artifacts
+```
+
 ## Architecture
 
 ### Core Components
@@ -72,24 +83,17 @@ uv sync --group dev
 
 ### Current Services
 
-- **automation_studio** (`src/asyncplatform/services/automation_studio.py`): Manages Automation Studio projects and workflows
-  - `get_projects()`: Retrieve all projects with automatic pagination
-  - `describe_project()`: Get detailed project information
-  - `find_projects()`: Search projects by name
-  - `import_project()`: Import a project
-  - `delete_project()`: Delete a project by ID
-  - `patch_project()`: Update project fields
-  - `describe_workflow()`: Get workflow details
-
-- **authorization** (`src/asyncplatform/services/authorization.py`): Manages authorization groups and accounts
-  - `get_groups()`: Retrieve all authorization groups with pagination
-  - `get_accounts()`: Retrieve all user accounts with pagination
+- **automation_studio**: Manage projects and workflows (import, delete, patch, describe)
+- **authorization**: Manage authorization groups and user accounts
+- **configuration_manager**: Manage platform configuration
+- **lifecycle_manager**: Manage platform lifecycle operations
+- **operations_manager**: Manage platform operations
+- **help**: Access platform help and documentation
 
 ### Current Resources
 
-- **projects** (`src/asyncplatform/resources/projects.py`): High-level project management
-  - `importer()`: Import project with member assignments
-  - `delete()`: Delete project by name
+- **projects**: Import projects with member assignments, delete by name
+- **automations**: High-level automation management
 
 ### Service Base Class
 
@@ -136,10 +140,18 @@ async with asyncplatform.client(**cfg) as client:
 - `src/asyncplatform/exceptions.py`: Custom exception classes
 - `src/asyncplatform/jsonutils.py`: JSON utilities for API responses
 - `src/asyncplatform/http.py`: HTTP enumerations and response wrapper
+- `src/asyncplatform/heuristics.py`: Heuristic utilities
+- `src/asyncplatform/metadata.py`: Package metadata
 - `src/asyncplatform/models/`: Data models (e.g., ProjectMember)
 - `examples/import_project.py`: Example usage patterns
 
 ## Development Notes
+
+### Test Structure
+
+- Tests live in `tests/unit/` (flat layout, not mirroring `src/`)
+- Test files named `test_<module>.py` (e.g., `test_services_authorization.py`)
+- `tox.ini` configures multi-version testing across Python 3.10–3.13
 
 ### Code Style and Type Annotations
 
@@ -209,5 +221,3 @@ async with asyncplatform.client(**cfg) as client:
 - Use pathlib for file operations
 - Prefer `pathlib.glob()` over manual iteration for file discovery
 - Use dictionary comprehensions to filter None values from kwargs
-
-

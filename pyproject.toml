@@ -31,6 +31,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
 
@@ -41,7 +42,7 @@ email = "opensource@itential.com"
 [project.urls]
 Homepage = "https://itential.com"
 Repository = "https://github.com/itential/asyncplatform"
-Documentation = "https://github.com/itential/asyncplatform"
+Documentation = "https://github.com/itential/asyncplatform/tree/main/docs"
 
 
 [dependency-groups]
@@ -49,7 +50,6 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
-    "q",
     "ruff",
     "mypy",
     "coverage",
@@ -63,9 +63,6 @@ dev = [
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning>=0.7.0"]
 build-backend = "hatchling.build"
-
-[tool.setuptools.dynamic]
-version = { attr = "asyncplatform.metadata.version" } 
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
@@ -199,8 +196,6 @@ ignore = [
     "S105", "S106", "S107",
     # Ignore complexity
     "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
-    # Allow print statements (useful for debugging)
-    "T201",
     # Allow assert statements (used for internal validation in SDK)
     "S101",
     # Allow subprocess without shell=False (we control the input)
@@ -209,20 +204,10 @@ ignore = [
     "S607",
     # Allow use of `typing.Any`
     "ANN401",
-    # Allow missing docstrings for magic methods
-    "D105",
-    # Allow missing docstrings in __init__
-    "D107",
     # Allow relative imports for local packages
     "TID252",
     # Allow catching broad exceptions (necessary for HTTP client)
     "BLE001",
-    # Allow raise without from inside except
-    "B904",
-    # Allow too many return statements
-    "PLR0911",
-    # Allow too many arguments
-    "PLR0913",
     # Allow implicit string concatenation (useful for long strings)
     "ISC001",
     # Allow passing strings directly to exceptions
@@ -288,6 +273,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
     "G004",     # Logging statement uses f-string (acceptable for informational logging)
     "E501",     # Line too long (docstrings can be longer)
     "PLW0603",  # Global statement (used for module-level state)
+    "T201",     # print used intentionally in fatal() to write to stderr before sys.exit
 ]
 
 "src/asyncplatform/heuristics.py" = [
@@ -385,3 +371,15 @@ disable_error_code = ["attr-defined", "arg-type"]
 module = "asyncplatform.resources.*"
 # Ignore attribute errors for dynamically loaded service attributes
 disable_error_code = ["attr-defined"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+
+[tool.coverage.run]
+source = ["src/asyncplatform"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

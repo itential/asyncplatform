@@ -177,7 +177,7 @@ class Scanner:
                 )
         except re.error as e:
             msg = f"Invalid regex pattern for '{name}': {e}"
-            raise re.error(msg)
+            raise re.error(msg) from e
 
     def remove_pattern(self, name: str) -> bool:
         """Remove a pattern from the scanner.
