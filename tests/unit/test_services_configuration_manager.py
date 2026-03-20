@@ -1195,3 +1195,199 @@ class TestConfigurationManagerConfigurations:
         call_args = mock_client.post.call_args
         assert call_args[0][0] == "/configuration_manager/search/configs"
         assert call_args[1]["json"] == query
+
+
+class TestConfigurationManagerGoldenConfigs:
+    """Test suite for Golden Config management methods."""
+
+    @pytest.mark.asyncio
+    async def test_find_golden_configs_returns_all_when_no_name(self):
+        """Test find_golden_configs returns all configs when no name filter provided."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {"_id": "tree1", "name": "Cisco Edge - Day 0"},
+            {"_id": "tree2", "name": "Cisco Core - Day 0"},
+        ]
+        mock_client.get = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        result = await service.find_golden_configs()
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        call_args = mock_client.get.call_args
+        assert call_args[0][0] == "/configuration_manager/configs"
+
+    @pytest.mark.asyncio
+    async def test_find_golden_configs_filters_by_name(self):
+        """Test find_golden_configs returns only configs matching the given name."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {"_id": "tree1", "name": "Cisco Edge - Day 0"},
+            {"_id": "tree2", "name": "Cisco Core - Day 0"},
+        ]
+        mock_client.get = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        result = await service.find_golden_configs(name="Cisco Edge - Day 0")
+
+        assert len(result) == 1
+        assert result[0]["name"] == "Cisco Edge - Day 0"
+        assert result[0]["_id"] == "tree1"
+
+    @pytest.mark.asyncio
+    async def test_find_golden_configs_returns_empty_when_no_match(self):
+        """Test find_golden_configs returns empty list when name does not match."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = [
+            {"_id": "tree1", "name": "Cisco Edge - Day 0"},
+        ]
+        mock_client.get = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        result = await service.find_golden_configs(name="NonExistent Tree")
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_find_golden_configs_returns_empty_list_from_api(self):
+        """Test find_golden_configs handles empty API response."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = []
+        mock_client.get = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        result = await service.find_golden_configs()
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_delete_golden_config_returns_deletion_result(self):
+        """Test delete_golden_config returns status dict from the API."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"status": "success", "deleted": 1}
+        mock_client.delete = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        result = await service.delete_golden_config("tree123")
+
+        assert result["status"] == "success"
+        assert result["deleted"] == 1
+
+    @pytest.mark.asyncio
+    async def test_delete_golden_config_calls_correct_endpoint(self):
+        """Test delete_golden_config calls the path endpoint with the tree ID."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"status": "success", "deleted": 1}
+        mock_client.delete = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        await service.delete_golden_config("abc-123")
+
+        call_args = mock_client.delete.call_args
+        assert call_args[0][0] == "/configuration_manager/configs/abc-123"
+
+    @pytest.mark.asyncio
+    async def test_import_golden_config_returns_import_result(self):
+        """Test import_golden_config returns status and message from the API."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "status": "success",
+            "message": "2 golden config trees imported successfully",
+        }
+        mock_client.post = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        trees = [{"data": [{"name": "Tree A"}]}, {"data": [{"name": "Tree B"}]}]
+        result = await service.import_golden_config(trees)
+
+        assert result["status"] == "success"
+        assert "imported successfully" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_import_golden_config_sends_trees_in_payload(self):
+        """Test import_golden_config sends trees list as request body."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"status": "success", "message": "imported"}
+        mock_client.post = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        trees = [{"data": [{"name": "Tree A"}]}]
+        await service.import_golden_config(trees)
+
+        call_args = mock_client.post.call_args
+        assert call_args[0][0] == "/configuration_manager/import/goldenconfigs"
+        assert call_args[1]["json"]["trees"] == trees
+        assert "options" not in call_args[1]["json"]
+
+    @pytest.mark.asyncio
+    async def test_import_golden_config_includes_options_when_provided(self):
+        """Test import_golden_config includes options in payload when provided."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"status": "success", "message": "imported"}
+        mock_client.post = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        trees = [{"data": [{"name": "Tree A"}]}]
+        options = {"overwrite": True}
+        await service.import_golden_config(trees, options=options)
+
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert payload["trees"] == trees
+        assert payload["options"] == options
+
+    @pytest.mark.asyncio
+    async def test_import_golden_config_omits_options_when_none(self):
+        """Test import_golden_config does not include options key when options is None."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"status": "success", "message": "imported"}
+        mock_client.post = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        trees = [{"data": [{"name": "Tree A"}]}]
+        await service.import_golden_config(trees, options=None)
+
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert "options" not in payload

@@ -968,3 +968,100 @@ class Service(ServiceBase):
             expected_status=HTTPStatus.OK,
         )
         return res.json()
+
+    # Golden Config Management
+
+    @logging.trace
+    async def find_golden_configs(
+        self,
+        *,
+        name: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Search for Golden Config trees by name.
+
+        Fetches all Golden Config trees and filters them client-side. If no
+        name is provided, all trees are returned without filtering.
+
+        Args:
+            name: Optional exact name to filter by. If None, no filtering
+                is applied and all trees are returned.
+
+        Returns:
+            A list of Golden Config tree dictionaries matching the criteria.
+            Returns an empty list if no matching trees are found.
+
+        Raises:
+            AsyncPlatformError: If the API request fails
+        """
+        res = await self.get("/configuration_manager/configs")
+        configs: list[dict[str, Any]] = res.json()
+
+        if name is not None:
+            configs = [c for c in configs if c.get("name") == name]
+
+        logging.info(f"Found {len(configs)} golden config(s)")
+
+        return configs
+
+    @logging.trace
+    async def delete_golden_config(self, tree_id: str) -> dict[str, Any]:
+        """Delete a Golden Config tree by ID.
+
+        Permanently removes the specified Golden Config tree from the platform.
+        This operation cannot be undone.
+
+        Args:
+            tree_id: The unique identifier of the Golden Config tree to delete
+
+        Returns:
+            A dictionary containing deletion status with keys:
+                - status: "success" or "conflict"
+                - deleted: Number of trees deleted
+
+        Raises:
+            AsyncPlatformError: If the deletion request fails
+        """
+        res = await self.delete(
+            f"/configuration_manager/configs/{tree_id}",
+            params={},
+            expected_status=HTTPStatus.OK,
+        )
+        return res.json()
+
+    @logging.trace
+    async def import_golden_config(
+        self,
+        trees: list[dict[str, Any]],
+        *,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Import Golden Config tree documents.
+
+        Inserts Golden Config documents into the golden config collection.
+        Typically used to restore exported trees or migrate between environments.
+
+        Args:
+            trees: List of Golden Config tree objects to import. Each object
+                contains a ``data`` key with a list of tree version summary
+                documents.
+            options: Optional import options dictionary
+
+        Returns:
+            A dictionary containing the import result with keys:
+                - status: "success"
+                - message: Human-readable summary (e.g. "2 golden config trees
+                  imported successfully")
+
+        Raises:
+            AsyncPlatformError: If the import request fails or data is invalid
+        """
+        payload: dict[str, Any] = {"trees": trees}
+        if options is not None:
+            payload["options"] = options
+
+        res = await self.post(
+            "/configuration_manager/import/goldenconfigs",
+            json=payload,
+            expected_status=HTTPStatus.OK,
+        )
+        return res.json()

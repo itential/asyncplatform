@@ -67,6 +67,11 @@ class ResourceBase:
         """Get the Lifecycle Manager service instance."""
         return self.client.lifecycle_manager
 
+    @property
+    def configuration_manager(self) -> Any:
+        """Get the Configuration Manager service instance."""
+        return self.client.configuration_manager
+
     @logging.trace
     async def get_groups(self) -> dict[str, dict[str, Any]]:
         """Retrieve and cache all authorization groups from the platform.
