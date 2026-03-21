@@ -1,169 +1,107 @@
 # AsyncPlatform
 
-An async Python client library for the Itential Platform REST API.
+> Async Python client library for the Itential Platform REST API.
 
-AsyncPlatform provides a high-level, asynchronous interface for interacting with Itential Automation Platform services. Built on top of [ipsdk](https://github.com/itential/ipsdk), it offers a plugin-based architecture with automatic service discovery and resource management.
-
-## Features
-
-- **Async/Await Support**: Built for modern Python with full asyncio support
-- **High-Level Resources**: Complex operations simplified through resource abstractions
-- **Type Hints**: Fully typed for better IDE support and type checking
-- **Caching**: Built-in async-safe caching with TTL support
-- **Context Management**: Automatic connection lifecycle management
+AsyncPlatform provides a high-level, asynchronous interface for the Itential Automation Platform. It wraps [ipsdk](https://github.com/itential/ipsdk) with automatic service discovery, resource abstractions, and connection lifecycle management.
 
 ## Requirements
 
-- Python 3.10 or higher
-- Itential Platform 2023.1 or higher
+- Python 3.10+
+- Itential Platform 2023.1+
+- [uv](https://github.com/astral-sh/uv) (recommended) or pip
 
 ## Installation
 
 ```bash
+# with uv (recommended)
+uv add asyncplatform
+
+# with pip
 pip install asyncplatform
 ```
 
 ## Quick Start
 
-### Basic Usage
-
 ```python
+import asyncio
 import asyncplatform
 
 async def main():
     cfg = {
         "host": "platform.example.com",
         "user": "admin@domain",
-        "password": "your-password"
+        "password": "your-password",
     }
 
     async with asyncplatform.client(**cfg) as client:
-        # Access services directly
         projects = await client.automation_studio.get_projects()
         print(f"Found {len(projects)} projects")
 
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
-### Using Services
+## Usage
 
-Services provide access to specific Itential Platform APIs:
+### Services
+
+Services map directly to Itential Platform APIs and are available as attributes on the client:
 
 ```python
 async with asyncplatform.client(**cfg) as client:
-    # Get all projects
+    # Automation Studio
     projects = await client.automation_studio.get_projects()
-
-    # Get specific project details
     project = await client.automation_studio.describe_project("project-id")
 
-    # Get authorization groups
+    # Authorization
     groups = await client.authorization.get_groups()
-
-    # Get user accounts
     accounts = await client.authorization.get_accounts()
 ```
 
-### Using Resources
+Available services: `automation_studio`, `authorization`, `configuration_manager`,
+`lifecycle_manager`, `operations_manager`, `help`.
 
-Resources provide high-level abstractions for complex operations:
+### Resources
+
+Resources combine multiple service calls into single high-level operations:
 
 ```python
 from asyncplatform.models.projects import ProjectMember
 
 async with asyncplatform.client(**cfg) as client:
-    # Get the projects resource
     projects = client.resource("projects")
-
-    # Import a project with member assignments
-    project_data = {
-        "name": "My Project",
-        "description": "Project description"
-    }
 
     members = [
         ProjectMember(name="admin_group", type="group", role="owner"),
-        ProjectMember(name="user@example.com", type="account", role="editor")
+        ProjectMember(name="user@example.com", type="account", role="editor"),
     ]
 
     result = await projects.importer(project_data, members=members)
-    print(f"Imported project: {result['name']}")
-
-    # Delete a project by name
     await projects.delete("My Project")
 ```
 
+Available resources: `projects`, `automations`.
+
 ## Development
 
-### Setup
+**Prerequisites**: Python 3.10+, [uv](https://github.com/astral-sh/uv)
 
 ```bash
-# Clone the repository
 git clone https://github.com/itential/asyncplatform.git
 cd asyncplatform
-
-# Install dependencies
-uv sync
+uv sync --group dev
 ```
-
-### Running Tests
 
 ```bash
-# Run all tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=src/asyncplatform --cov-report=term
-
-# Run specific test file
-uv run pytest tests/unit/test_loader.py
+make test        # run tests
+make lint        # lint src/ and tests/
+make coverage    # test with HTML coverage report
+make security    # bandit security scan
+make premerge    # full premerge checks (lint + test + security)
+make tox         # test across Python 3.10–3.13
 ```
 
-### Code Quality
-
-```bash
-# Linting
-uv run ruff check src/asyncplatform tests
-
-# Type checking
-uv run mypy src/asyncplatform
-
-# Formatting
-uv run ruff format src/asyncplatform tests
-```
-
-## Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, development workflow, and the process for submitting pull requests.
-
-## Documentation
-
-- [AGENTS.md](AGENTS.md) - Project overview and architecture for AI assistants
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Development guide and contribution guidelines
-- [Itential Platform Documentation](https://docs.itential.com/)
-
-## Support
-
-- Report bugs and feature requests via [GitHub Issues](https://github.com/itential/asyncplatform/issues)
-- For questions about the Itential Platform, visit [Itential Documentation](https://docs.itential.com/)
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [`docs/`](docs/) directory for architecture, testing patterns, and contribution guidelines.
 
 ## License
 
-Copyright (c) 2025 Itential, Inc
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-See [LICENSE](LICENSE) for the full license text and [LICENSES.md](LICENSES.md) for third-party license information.
+Copyright (c) 2025 Itential, Inc. GPL-3.0-or-later — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

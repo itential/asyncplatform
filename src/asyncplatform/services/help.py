@@ -15,6 +15,7 @@ class Service(ServiceBase):
 
     @logging.trace
     async def get_openapi(self, url: str | None = None) -> dict[str, Any]:
-        """ """
+        """
+        """
         res = await self.get("/help/openapi", params={"url": (url or "/")})
         return res.json()
