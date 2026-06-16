@@ -72,6 +72,16 @@ class ResourceBase:
         """Get the Configuration Manager service instance."""
         return self.client.configuration_manager
 
+    @property
+    def integration_models(self) -> Any:
+        """Get the Integration Models service instance."""
+        return self.client.integration_models
+
+    @property
+    def integrations(self) -> Any:
+        """Get the Integrations service instance."""
+        return self.client.integrations
+
     @logging.trace
     async def get_groups(self) -> dict[str, dict[str, Any]]:
         """Retrieve and cache all authorization groups from the platform.
