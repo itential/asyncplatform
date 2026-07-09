@@ -72,6 +72,12 @@ class ResourceBase:
         """Get the Configuration Manager service instance."""
         return self.client.configuration_manager
 
+    @property
+    def agent_projects(self) -> Any:
+        """Get the Agent Projects service instance."""
+        return self.client.agent_projects
+
+
     @logging.trace
     async def get_groups(self) -> dict[str, dict[str, Any]]:
         """Retrieve and cache all authorization groups from the platform.
