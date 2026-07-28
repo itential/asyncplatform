@@ -252,6 +252,8 @@ class Service(ServiceBase):
     async def import_agent_project(
         self,
         bundle: Mapping[str, Any],
+        *,
+        provider_resolutions: Mapping[str, Any] | None = None,
     ) -> Mapping[str, Any]:
         """Import a project into Agent Projects.
 
@@ -262,6 +264,10 @@ class Service(ServiceBase):
         Args:
             bundle: A mapping containing the complete project definition including
                 name, description, workflows, and other project components
+            provider_resolutions: Optional mapping of agent _id to a provider
+                profile/model override to apply during import. The named profile
+                must already exist on the destination platform. When omitted,
+                each agent's own `provider` field from the bundle is used as-is.
 
         Returns:
             A mapping containing the imported project data, including the newly
@@ -271,18 +277,17 @@ class Service(ServiceBase):
             HTTPError: If the import request fails or the project format is invalid
         """
 
-        provider_resolutions = {
-            agent["_id"]: {"profileName": "anthropic", "modelName": "claude-sonnet-4-6"}
-            for agent in bundle["agents"]
+        body: dict[str, Any] = {
+            "bundle": bundle,
+            "conflictMode": "replace",
         }
+
+        if provider_resolutions:
+            body["providerResolutions"] = provider_resolutions
 
         res = await self.post(
             "/agent-project-service/project-bundles/import",
-            json={
-                "bundle": bundle,
-                "conflictMode": "replace",
-                "providerResolutions": provider_resolutions,
-            },
+            json=body,
             expected_status=HTTPStatus.OK,
         )
 

@@ -387,8 +387,8 @@ class TestAgentProjectsServiceImportAgentProject:
 
 
     @pytest.mark.asyncio
-    async def test_import_agent_project_builds_provider_resolutions_from_agents(self):
-        """Test import_agent_project builds providerResolutions keyed by each agent _id."""
+    async def test_import_agent_project_omits_provider_resolutions_by_default(self):
+        """Test import_agent_project omits providerResolutions when not specified."""
         ctx = context.Context()
         mock_client = Mock()
         mock_response = Mock()
@@ -407,9 +407,35 @@ class TestAgentProjectsServiceImportAgentProject:
 
         await service.import_agent_project(project_data)
 
-        # Verify correct endpoint and payload
+        # Verify providerResolutions is omitted so the bundle's own agent
+        # provider fields are used as-is by the destination platform
         call_args = mock_client.post.call_args
         payload = call_args[1]["json"]
-        print(payload)
-        assert payload["providerResolutions"]["1"] == {"profileName": "anthropic", "modelName": "claude-sonnet-4-6"}
+        assert "providerResolutions" not in payload
+
+    @pytest.mark.asyncio
+    async def test_import_agent_project_passes_through_provider_resolutions(self):
+        """Test import_agent_project includes providerResolutions when explicitly given."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "data": {
+                "_id": "123",
+                "name": "Test"
+            }
+        }
+        mock_client.post = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        project_data = {"name": "Test", "agents": [{"_id": "1", "name": "test",}]}
+        resolutions = {"1": {"profileName": "openai", "modelName": "gpt-5"}}
+
+        await service.import_agent_project(project_data, provider_resolutions=resolutions)
+
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert payload["providerResolutions"] == resolutions
 
