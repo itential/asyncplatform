@@ -387,8 +387,12 @@ class TestAgentProjectsServiceImportAgentProject:
 
 
     @pytest.mark.asyncio
-    async def test_import_agent_project_omits_provider_resolutions_by_default(self):
-        """Test import_agent_project omits providerResolutions when not specified."""
+    async def test_import_agent_project_defaults_provider_resolutions_to_null_per_agent(self):
+        """Test import_agent_project resolves each agent to null by default.
+
+        A null resolution tells the platform to use that agent's own
+        `provider` field from the bundle as-is, rather than remapping it.
+        """
         ctx = context.Context()
         mock_client = Mock()
         mock_response = Mock()
@@ -407,11 +411,49 @@ class TestAgentProjectsServiceImportAgentProject:
 
         await service.import_agent_project(project_data)
 
-        # Verify providerResolutions is omitted so the bundle's own agent
-        # provider fields are used as-is by the destination platform
         call_args = mock_client.post.call_args
         payload = call_args[1]["json"]
-        assert "providerResolutions" not in payload
+        assert payload["providerResolutions"] == {"1": None}
+
+    @pytest.mark.asyncio
+    async def test_import_agent_project_falls_back_to_uuid_field(self):
+        """Test import_agent_project uses an agent's uuid field when _id is absent."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"data": {"_id": "123", "name": "Test"}}
+        mock_client.post = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        project_data = {"name": "Test", "agents": [{"uuid": "abc", "name": "test"}]}
+
+        await service.import_agent_project(project_data)
+
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert payload["providerResolutions"] == {"abc": None}
+
+    @pytest.mark.asyncio
+    async def test_import_agent_project_skips_agent_missing_id(self):
+        """Test import_agent_project skips agents with neither _id nor uuid."""
+        ctx = context.Context()
+        mock_client = Mock()
+        mock_response = Mock()
+        mock_response.json.return_value = {"data": {"_id": "123", "name": "Test"}}
+        mock_client.post = AsyncMock(return_value=mock_response)
+        ctx.client = mock_client
+
+        service = Service(ctx)
+
+        project_data = {"name": "Test", "agents": [{"name": "test"}]}
+
+        await service.import_agent_project(project_data)
+
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert payload["providerResolutions"] == {}
 
     @pytest.mark.asyncio
     async def test_import_agent_project_passes_through_provider_resolutions(self):

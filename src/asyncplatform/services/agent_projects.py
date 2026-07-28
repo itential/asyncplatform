@@ -267,7 +267,8 @@ class Service(ServiceBase):
             provider_resolutions: Optional mapping of agent _id to a provider
                 profile/model override to apply during import. The named profile
                 must already exist on the destination platform. When omitted,
-                each agent's own `provider` field from the bundle is used as-is.
+                every agent in the bundle is resolved to `null`, telling the
+                platform to use each agent's own `provider` field as-is.
 
         Returns:
             A mapping containing the imported project data, including the newly
@@ -277,13 +278,18 @@ class Service(ServiceBase):
             HTTPError: If the import request fails or the project format is invalid
         """
 
+        if provider_resolutions is None:
+            provider_resolutions = {
+                agent_id: None
+                for agent in bundle.get("agents", [])
+                if (agent_id := agent.get("_id") or agent.get("uuid"))
+            }
+
         body: dict[str, Any] = {
             "bundle": bundle,
             "conflictMode": "replace",
+            "providerResolutions": provider_resolutions,
         }
-
-        if provider_resolutions:
-            body["providerResolutions"] = provider_resolutions
 
         res = await self.post(
             "/agent-project-service/project-bundles/import",
