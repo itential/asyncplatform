@@ -673,6 +673,60 @@ class TestImporter:
         resource._update_project_members.assert_called_once_with(project, members)
 
     @pytest.mark.asyncio
+    async def test_importer_preserve_existing_members_uses_fetched_project(self):
+        """Test importer preserves existing members by default."""
+        mock_client = MagicMock()
+        mock_agent_projects = MagicMock()
+
+        existing_project = {
+            "_id": "existing",
+            "name": "Test Project",
+            "members": [
+                {
+                    "reference": "existing1",
+                    "type": "account",
+                    "role": "editor",
+                    "username": "olduser",
+                }
+            ],
+        }
+        mock_agent_projects.find_agent_projects = AsyncMock(
+            return_value=[existing_project]
+        )
+        mock_agent_projects.delete_agent_project = AsyncMock(return_value=None)
+        # Import response deliberately has no "members" key, matching the real API.
+        mock_agent_projects.import_agent_project = AsyncMock(
+            return_value={"_id": "new-id", "name": "Test Project"}
+        )
+        mock_patch_response = Mock()
+        mock_patch_response.json.return_value = {"data": {"_id": "new-id"}}
+        mock_agent_projects.patch_agent_project = AsyncMock(
+            return_value=mock_patch_response
+        )
+        mock_client.agent_projects = mock_agent_projects
+
+        resource = Resource(mock_client)
+        resource.get_groups = AsyncMock(return_value={})
+        resource.get_accounts = AsyncMock(
+            return_value={
+                "olduser": {"_id": "existing1", "name": "olduser"},
+                "newuser": {"_id": "newref", "name": "newuser"},
+            }
+        )
+
+        bundle = {"name": "Test Project", "description": "Test2"}
+        new_members = [ProjectMember(username="newuser", type="account", role="editor")]
+
+        await resource.importer(bundle, members=new_members, overwrite=True)
+
+        mock_agent_projects.patch_agent_project.assert_called_once()
+        patched_members = mock_agent_projects.patch_agent_project.call_args[0][1][
+            "members"
+        ]
+        references = {m["reference"] for m in patched_members}
+        assert references == {"existing1", "newref"}
+
+    @pytest.mark.asyncio
     async def test_importer_does_not_mutate_input_bundle(self):
         """Test importer operates on a deep copy so the caller's bundle is unchanged."""
         mock_client = MagicMock()

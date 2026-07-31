@@ -96,7 +96,7 @@ class Resource(ResourceBase):
         project: dict[str, Any],
         members: list[ProjectMember],
         *,
-        preserve_existing_members: bool = False,
+        preserve_existing_members: bool = True,
     ) -> dict[str, Any] | None:
         """Update project members, optionally preserving existing ones.
 
@@ -107,8 +107,8 @@ class Resource(ResourceBase):
         Args:
             project: The project data containing at minimum '_id' and 'members'
             members: List of ProjectMembers to add to the project
-            preserve_existing_members: If True, existing project members are kept
-                alongside the new ones. Defaults to False.
+            preserve_existing_members: If True (default), existing project
+                members are kept alongside the new ones.
 
         Raises:
             AsyncPlatformError: If any member does not exist or has an invalid type
@@ -159,18 +159,24 @@ class Resource(ResourceBase):
         *,
         members: list[ProjectMember] | None = None,
         overwrite: bool = False,
+        preserve_existing_members: bool = True,
     ) -> dict[str, Any]:
         """Import an agent project bundle into the platform.
 
         Imports a bundle using given overwrite value and optionally assigns
-        members to the project after import. Will NOT preserve the members of the
-        original project, they must be added though the members parameter.
+        members to the project after import. The import response itself does
+        not include the project's prior members, so when preserve_existing_members
+        is requested, the existing project is fetched via a GET before it is
+        overwritten so its real member list can be carried forward.
 
         Args:
             bundle: Complete agent project bundle including agents and configuration
             members: Optional list of ProjectMember objects to assign to the project
             overwrite: If true, deletes project and then reimports. If false (default)
             raises an error if the project already exists
+            preserve_existing_members: If True (default), members already on an
+                existing project (when overwrite is True) are kept alongside
+                members. Matches the Studio Projects importer's default.
 
         Returns:
             The imported project data including _id and name
@@ -182,6 +188,8 @@ class Resource(ResourceBase):
         """
         project = copy.deepcopy(bundle)
 
+        members = list(members) if members else []
+
         # Check if project exists and handle based on overwrite flag
         if not overwrite:
             await self._ensure_project_is_new(project["name"])
@@ -191,6 +199,16 @@ class Resource(ResourceBase):
                 name=project["name"]
             )
             if existing_projects:
+                if preserve_existing_members:
+                    members.extend(
+                        ProjectMember(
+                            name=member.get("name"),
+                            username=member.get("username"),
+                            type=member["type"],
+                            role=member["role"],
+                        )
+                        for member in existing_projects[0].get("members", [])
+                    )
                 await self.agent_projects.delete_agent_project(
                     existing_projects[0]["_id"]
                 )
@@ -198,11 +216,9 @@ class Resource(ResourceBase):
         # Import the project
         result = await self.agent_projects.import_agent_project(project)
 
-        # Add members if specified
+        # Add members if any were specified or carried forward
         if members:
-            await self._update_project_members(
-                result, members
-            )
+            await self._update_project_members(result, members)
 
         return result
 
